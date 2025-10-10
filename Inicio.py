@@ -8,7 +8,7 @@ from db import get_qry
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(
     page_title="Control de Gages - Nexteer",
-    page_icon="✅",
+    page_icon="",
     layout="wide",
 )
 
