@@ -41,7 +41,7 @@ st.markdown("""
     <style>
         /* Contenedor principal del input de cámara */
         div[data-testid="stCameraInput"] {
-            width: 33% !important;        /* Ocupa un tercio del ancho */
+            width: 100% !important;        /* Ocupa un tercio del ancho */
             margin: auto;                 /* Centrado horizontal */
         }
 
@@ -52,7 +52,7 @@ st.markdown("""
             object-fit: cover !important;    /* Rellena el cuadro */
             border-radius: 15px !important;  /* Bordes redondeados */
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            width: 100% !important;
+            width: 80% !important;
             height: auto !important;
         }
 
@@ -64,6 +64,22 @@ st.markdown("""
         }
     </style>
 """, unsafe_allow_html=True)
+
+# --- CSS para centrar el texto del label del camera_input ---
+st.markdown("""
+    <style>
+    /* Centrar el texto del label del camera_input */
+    div[data-testid="stCameraInput"] > label {
+        display: block;
+        text-align: center;
+        font-weight: 600;
+        font-size: 60px;  /* tamaño más grande */
+        color: #003366;
+        margin-bottom: 10px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 
 consulta = """
                 SELECT S.Status_RID, StatusName, L.Location_RID, L.LocationName AREA, CurrentLocation_RID_FK, LO.LocationName LINEA, Gage_SN, GageDescriptionName, RecurrenceOptionType, Period, RecurrenceType,
@@ -95,10 +111,10 @@ def ExecuteQry():
 # Interfaz Streamlit
 param = None  # Inicializamos la variable para evitar el NameError
 
-col1, col2, col3 = st.columns([1, 2, 1])
+col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
     # Capturar imagen desde la webcam
-    img_file = st.camera_input("Toma una foto del QR")
+    img_file = st.camera_input("Escanear código QR")
 
 if img_file is not None:
     # Abrir la imagen con PIL
