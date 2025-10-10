@@ -28,7 +28,7 @@ except Exception:
 st.markdown(
     """
     <div style='text-align: center; padding: 10px 0;'>
-        <h1 style='color: #003366; margin-bottom: 0;'>Control de Calibraciones</h1>
+        <h1 style='color: #003366; margin-bottom: 0;'>CONTROL DE EQUIPOS - METROLOGÍA</h1>
         <h3 style='color: #666;'>Planta 66 - Nexteer Automotive</h3>
         <hr style='border: 2px solid #003366; width: 60%; margin: auto;'>
     </div>
@@ -93,11 +93,12 @@ def ExecuteQry():
 
 
 # Interfaz Streamlit
-st.title("CONTROL DE EQUIPOS - METROLOGÍA")
 param = None  # Inicializamos la variable para evitar el NameError
 
-# Capturar imagen desde la webcam
-img_file = st.camera_input("Toma una foto del QR")
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    # Capturar imagen desde la webcam
+    img_file = st.camera_input("Toma una foto del QR")
 
 if img_file is not None:
     # Abrir la imagen con PIL
