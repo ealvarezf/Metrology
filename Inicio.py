@@ -101,7 +101,22 @@ def ExecuteQry():
         rows, description  = get_qry(consulta, [param])
         if rows:
             df = pd.DataFrame.from_records(rows, columns=[desc[0] for desc in description])
-            st.dataframe(df, use_container_width=True)              
+            st.dataframe(df, use_container_width=True)
+
+            #df_transposed = df.T
+            #df_transposed.columns = ['Valor']  # Opcional, para renombrar la columna
+            #st.dataframe(df_transposed, use_container_width=True)
+            #st.table(df_transposed)
+
+            df_transposed = df.T
+            df_transposed.columns = ['Valor']
+            # Convertir todo a string
+            df_transposed['Valor'] = df_transposed['Valor'].astype(str)
+            # Mostrar tabla centrada
+            st.markdown("<div style='width: 60%; margin: auto;'>", unsafe_allow_html=True)
+            st.table(df_transposed)
+            st.markdown("</div>", unsafe_allow_html=True)
+
     except Exception as e:
         st.error(f"Ocurrió un error inesperado: {e}")
 
