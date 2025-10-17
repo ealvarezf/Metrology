@@ -82,8 +82,9 @@ st.markdown("""
 
 
 consulta = """
-                SELECT S.Status_RID, StatusName, L.Location_RID, L.LocationName AREA, CurrentLocation_RID_FK, LO.LocationName LINEA, Gage_SN, GageDescriptionName, RecurrenceOptionType, Period, RecurrenceType,
-                    LastDone, NextDue, G.Notes  
+                SELECT StatusName, L.LocationName AREA, LO.LocationName LINEA, Gage_SN, GageDescriptionName DESCRIPCION,
+                       RecurrenceOptionType OPCION, Period PERIODO, RecurrenceType RECURRENCIA,
+                    LastDone, NextDue, G.Notes NOTAS  
                 FROM ActionSchedules LEFT JOIN GageCalibrations ON ActionSchedule_RID = ActionSchedule_RID_FK
                                     LEFT JOIN Gages G ON Gage_RID_FK = Gage_RID
                                     LEFT JOIN GageDescriptions ON GageDescription_RID = GageDescription_RID_FK
