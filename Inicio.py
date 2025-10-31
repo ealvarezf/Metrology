@@ -83,19 +83,31 @@ st.markdown("""
 
 consulta = """
                 SELECT StatusName, L.LocationName AREA, LO.LocationName LINEA, Gage_SN, GageDescriptionName DESCRIPCION,
-                       RecurrenceOptionType OPCION, Period PERIODO, RecurrenceType RECURRENCIA,
-                    LastDone, NextDue, G.Notes NOTAS  
-                FROM ActionSchedules LEFT JOIN GageCalibrations ON ActionSchedule_RID = ActionSchedule_RID_FK
-                                    LEFT JOIN Gages G ON Gage_RID_FK = Gage_RID
-                                    LEFT JOIN GageDescriptions ON GageDescription_RID = GageDescription_RID_FK
-                                    LEFT JOIN Locations L ON L.Location_RID = StorageLocation_RID_FK
-                                    LEFT JOIN Locations LO ON LO.Location_RID = CurrentLocation_RID_FK
-                                    LEFT JOIN Custodians ON Custodian_RID = L.Custodian_RID_FK
-                                    LEFT JOIN GageTypes ON GageType_RID = GageType_RID_FK
-                                    LEFT JOIN Status S ON S.Status_RID = Status_RID_FK
-                WHERE Gage_ID = ?;
+                       G.Notes NOTAS  
+                  FROM Gages G LEFT JOIN GageDescriptions ON GageDescription_RID = GageDescription_RID_FK
+                               LEFT JOIN Locations L ON L.Location_RID = StorageLocation_RID_FK
+                               LEFT JOIN Locations LO ON LO.Location_RID = CurrentLocation_RID_FK
+                               LEFT JOIN Custodians ON Custodian_RID = L.Custodian_RID_FK
+                               LEFT JOIN GageTypes ON GageType_RID = GageType_RID_FK
+                               LEFT JOIN Status S ON S.Status_RID = Status_RID_FK
+                 WHERE Gage_ID = ?;
            """
 
+consultaCalibra = """
+                    SELECT ActionType, Gage_SN, RecurrenceOptionType OPCION, (CAST(Period AS nvarchar(3)) + '  ' + RecurrenceType) [FRECUENCIA CALIBRACION],
+                           LastDone, NextDue  
+                      FROM ActionSchedules LEFT JOIN GageCalibrations ON ActionSchedule_RID = ActionSchedule_RID_FK
+                                           LEFT JOIN Gages G ON Gage_RID_FK = Gage_RID      
+                     WHERE Gage_ID = ?;
+           """
+
+consultaMsa = """
+                    SELECT ActionType, Gage_SN, RecurrenceOptionType OPCION, (CAST(Period AS nvarchar(3)) + '  ' + RecurrenceType) [FRECUENCIA MSA],
+                           LastDone, NextDue  
+                      FROM ActionSchedules LEFT JOIN GageMsaActivities ON ActionSchedule_RID_FK = ActionSchedule_RID
+                                           LEFT JOIN Gages G ON Gage_RID_FK = Gage_RID      
+                     WHERE Gage_ID = ?;
+           """
 
 def ExecuteQry(): 
     try:
@@ -104,19 +116,16 @@ def ExecuteQry():
             df = pd.DataFrame.from_records(rows, columns=[desc[0] for desc in description])
             st.dataframe(df, use_container_width=True)
 
-            #df_transposed = df.T
-            #df_transposed.columns = ['Valor']  # Opcional, para renombrar la columna
-            #st.dataframe(df_transposed, use_container_width=True)
-            #st.table(df_transposed)
+            rows, description  = get_qry(consultaCalibra, [param])
+            if rows:
+                dfc = pd.DataFrame.from_records(rows, columns=[desc[0] for desc in description])
+                st.dataframe(dfc, use_container_width=True)
 
-            df_transposed = df.T
-            df_transposed.columns = ['Valor']
-            # Convertir todo a string
-            df_transposed['Valor'] = df_transposed['Valor'].astype(str)
-            # Mostrar tabla centrada
-            st.markdown("<div style='width: 60%; margin: auto;'>", unsafe_allow_html=True)
-            st.table(df_transposed)
-            st.markdown("</div>", unsafe_allow_html=True)
+            rows, description  = get_qry(consultaMsa, [param])
+            if rows:
+                dfm = pd.DataFrame.from_records(rows, columns=[desc[0] for desc in description])
+                st.dataframe(dfm, use_container_width=True)                
+
 
     except Exception as e:
         st.error(f"Ocurrió un error inesperado: {e}")
