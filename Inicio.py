@@ -4,6 +4,7 @@ import os
 from pyzbar.pyzbar import decode
 from PIL import Image
 from db import get_qry
+from gage import ExecuteQry 
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(
@@ -109,7 +110,7 @@ consultaMsa = """
                      WHERE Gage_ID = ?;
            """
 
-def ExecuteQry(): 
+def ExecuteQryold(): 
     try:
         rows, description  = get_qry(consulta, [param])
         if rows:
@@ -161,7 +162,9 @@ if img_file is not None:
         if len(lines) >= 1:
             param = lines[-1]
             st.success(f"Parámetro para la consulta: {param}")
-            ExecuteQry()
+            gage = ExecuteQry(param)
+            if gage:
+                gage.render()
         else:
             st.warning("El QR no tiene suficientes líneas")
     else:
