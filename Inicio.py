@@ -4,7 +4,7 @@ import os
 from pyzbar.pyzbar import decode
 from PIL import Image
 from db import get_qry
-from gage import ExecuteQry 
+from gage import ExecuteQry, Gage 
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(
@@ -81,57 +81,65 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# =====================================================
+# ESTILO
+# =====================================================
+st.markdown("""
+    <style>
+    .card {
+        background: linear-gradient(145deg, #ffffff, #f9fafb);
+        border-radius: 16px;
+        padding: 22px;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+        margin: 20px 0;
+        border: 1px solid #e2e8f0;
+    }
+    .card:hover {
+        transform: translateY(-4px);
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+    h3 { color: #1e293b; }
+    h4 { color: #334155; margin-top: 20px; }
+    p { color: #475569; margin: 4px 0; }
+    .ok { color: #15803d; font-weight: 600; }
+    .alerta { color: #e11d48; font-weight: 600; }
+    </style>
+""", unsafe_allow_html=True)
 
-consulta = """
-                SELECT StatusName, L.LocationName AREA, LO.LocationName LINEA, Gage_SN, GageDescriptionName DESCRIPCION,
-                       G.Notes NOTAS  
-                  FROM Gages G LEFT JOIN GageDescriptions ON GageDescription_RID = GageDescription_RID_FK
-                               LEFT JOIN Locations L ON L.Location_RID = StorageLocation_RID_FK
-                               LEFT JOIN Locations LO ON LO.Location_RID = CurrentLocation_RID_FK
-                               LEFT JOIN Custodians ON Custodian_RID = L.Custodian_RID_FK
-                               LEFT JOIN GageTypes ON GageType_RID = GageType_RID_FK
-                               LEFT JOIN Status S ON S.Status_RID = Status_RID_FK
-                 WHERE Gage_ID = ?;
-           """
+# =====================================================
+# FUNCIÓN PARA RENDERIZAR TARJETA
+# =====================================================
 
-consultaCalibra = """
-                    SELECT ActionType, Gage_SN, RecurrenceOptionType OPCION, (CAST(Period AS nvarchar(3)) + '  ' + RecurrenceType) [FRECUENCIA CALIBRACION],
-                           LastDone, NextDue  
-                      FROM ActionSchedules LEFT JOIN GageCalibrations ON ActionSchedule_RID = ActionSchedule_RID_FK
-                                           LEFT JOIN Gages G ON Gage_RID_FK = Gage_RID      
-                     WHERE Gage_ID = ?;
-           """
+def render_gage_card(g: Gage):
+    dias_cal = g.calibration.dias_para_proximo() if g.calibration else None
+    dias_msa = g.msa.dias_para_proximo() if g.msa else None
+    estado_cal = "alerta" if dias_cal and dias_cal < 30 else "ok"
+    estado_msa = "alerta" if dias_msa and dias_msa < 30 else "ok"
 
-consultaMsa = """
-                    SELECT ActionType, Gage_SN, RecurrenceOptionType OPCION, (CAST(Period AS nvarchar(3)) + '  ' + RecurrenceType) [FRECUENCIA MSA],
-                           LastDone, NextDue  
-                      FROM ActionSchedules LEFT JOIN GageMsaActivities ON ActionSchedule_RID_FK = ActionSchedule_RID
-                                           LEFT JOIN Gages G ON Gage_RID_FK = Gage_RID      
-                     WHERE Gage_ID = ?;
-           """
+    html = f"""
+    <div class="card">
+        <h3>{g.descripcion}</h3>
+        <p><b>Estatus:</b> {g.estatus}</p>
+        <p><b>Área:</b> {g.area}</p>
+        <p><b>Línea:</b> {g.linea}</p>
+        <p><b>Operación:</b> {g.operacion}</p>
+        <p><b>Nota:</b> {g.nota}</p>
+        <h4>Calibración</h4>
+        <p><b>Tipo:</b> {g.calibration.action_type}</p>
+        <p><b>Recurrencia:</b> {g.calibration.frecuencia}</p>
+        <p><b>Última:</b> {g.calibration.last_done}</p>
+        <p><b>Próxima:</b> <span class="{estado_cal}">{g.calibration.next_due}</span></p>
+        <h4>MSA</h4>
+        <p><b>Tipo:</b> {g.msa.action_type}</p>
+        <p><b>Recurrencia:</b> {g.msa.frecuencia}</p>
+        <p><b>Último:</b> {g.msa.last_done}</p>
+        <p><b>Próximo:</b> <span class="{estado_msa}">{g.msa.next_due}</span></p>
+    </div>
+    """
 
-def ExecuteQryold(): 
-    try:
-        rows, description  = get_qry(consulta, [param])
-        if rows:
-            df = pd.DataFrame.from_records(rows, columns=[desc[0] for desc in description])
-            st.dataframe(df, use_container_width=True)
+    st.markdown(html, unsafe_allow_html=True)
 
-            rows, description  = get_qry(consultaCalibra, [param])
-            if rows:
-                dfc = pd.DataFrame.from_records(rows, columns=[desc[0] for desc in description])
-                st.dataframe(dfc, use_container_width=True)
-
-            rows, description  = get_qry(consultaMsa, [param])
-            if rows:
-                dfm = pd.DataFrame.from_records(rows, columns=[desc[0] for desc in description])
-                st.dataframe(dfm, use_container_width=True)                
-
-
-    except Exception as e:
-        st.error(f"Ocurrió un error inesperado: {e}")
-
-    return None  # En caso de error, retornar None
 
 
 # Interfaz Streamlit
@@ -164,7 +172,13 @@ if img_file is not None:
             st.success(f"Parámetro para la consulta: {param}")
             gage = ExecuteQry(param)
             if gage:
-                gage.render()
+                #gage.render()
+
+                # =====================================================
+                # MOSTRAR TARJETA
+                # =====================================================
+                render_gage_card(gage)
+
         else:
             st.warning("El QR no tiene suficientes líneas")
     else:

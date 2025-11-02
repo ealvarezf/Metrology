@@ -1,10 +1,10 @@
 import streamlit as st
-import pandas as pd
 from db import get_qry
+from datetime import datetime
 
 consulta = """
-                SELECT StatusName, L.LocationName AREA, LO.LocationName LINEA, Gage_SN, GageDescriptionName DESCRIPCION,
-                       G.Notes NOTAS  
+                SELECT StatusName, L.LocationName Area, LO.LocationName Linea, Gage_SN, GageDescriptionName Descripcion,
+                       G.Notes Notas  
                   FROM Gages G LEFT JOIN GageDescriptions ON GageDescription_RID = GageDescription_RID_FK
                                LEFT JOIN Locations L ON L.Location_RID = StorageLocation_RID_FK
                                LEFT JOIN Locations LO ON LO.Location_RID = CurrentLocation_RID_FK
@@ -15,7 +15,7 @@ consulta = """
            """
 
 consultaCalibra = """
-                    SELECT ActionType, Gage_SN, RecurrenceOptionType OPCION, (CAST(Period AS nvarchar(3)) + '  ' + RecurrenceType) [FRECUENCIA CALIBRACION],
+                    SELECT ActionType, Gage_SN, RecurrenceOptionType OPCION, (CAST(Period AS nvarchar(3)) + '  ' + RecurrenceType) FRECUENCIA,
                            LastDone, NextDue  
                       FROM ActionSchedules LEFT JOIN GageCalibrations ON ActionSchedule_RID = ActionSchedule_RID_FK
                                            LEFT JOIN Gages G ON Gage_RID_FK = Gage_RID      
@@ -23,66 +23,138 @@ consultaCalibra = """
            """
 
 consultaMsa = """
-                    SELECT ActionType, Gage_SN, RecurrenceOptionType OPCION, (CAST(Period AS nvarchar(3)) + '  ' + RecurrenceType) [FRECUENCIA MSA],
+                    SELECT ActionType, Gage_SN, RecurrenceOptionType OPCION, (CAST(Period AS nvarchar(3)) + '  ' + RecurrenceType) FRECUENCIA,
                            LastDone, NextDue  
                       FROM ActionSchedules LEFT JOIN GageMsaActivities ON ActionSchedule_RID_FK = ActionSchedule_RID
                                            LEFT JOIN Gages G ON Gage_RID_FK = Gage_RID      
                      WHERE Gage_ID = ?;
            """
 
+# =====================================================
+# CLASES
+# =====================================================
+class Calibration:
+    def __init__(self, action_type, gage_sn, recurrence, frecuencia, last_done, next_due):
+        self.action_type = action_type
+        self.gage_sn = gage_sn
+        self.recurrence = recurrence
+        self.frecuencia = frecuencia
+        self.last_done = last_done
+        self.next_due = next_due
+
+    def dias_para_proximo(self):
+        """Retorna los días restantes hasta la próxima calibración."""
+        try:
+            fecha = datetime.strptime(self.next_due, "%d-%m-%Y")
+            return (fecha - datetime.now()).days
+        except Exception:
+            return None
+
+class Msa:
+    def __init__(self, action_type, gage_sn, recurrence, frecuencia, last_done, next_due):
+        self.action_type = action_type
+        self.gage_sn = gage_sn
+        self.recurrence = recurrence
+        self.frecuencia = frecuencia
+        self.last_done = last_done
+        self.next_due = next_due
+
+    def dias_para_proximo(self):
+        """Retorna los días restantes hasta el próximo estudio MSA."""
+        try:
+            fecha = datetime.strptime(self.next_due, "%d-%m-%Y")
+            return (fecha - datetime.now()).days
+        except Exception:
+            return None
+
 class Gage:
-    def __init__(self, general=None, calibracion=None, msa=None):
-        self.general = general
-        self.calibracion = calibracion
-        self.msa = msa
+    def __init__(self, estatus, area, linea, operacion, descripcion, nota, calibration=None, msa=None):
+        """
+        Inicializa un gage con datos individuales y opcionalmente un objeto Calibration y Msa.
+        """
+        self.estatus = estatus
+        self.area = area
+        self.linea = linea
+        self.operacion = operacion
+        self.descripcion = descripcion
+        self.nota = nota
+        self.calibration = calibration or Recurrence()  # Evita None
+        self.msa = msa  or Recurrence()  # Evita None
 
-    def render(self):
-        import streamlit as st
-        st.markdown("### Información General del Gage")
-        if self.general is not None:
-            st.dataframe(self.general, use_container_width=True)
-        else:
-            st.info("Sin datos generales.")
+class Recurrence:
+    def __init__(self, action_type=None, frecuencia=None, last_done=None, next_due=None):
+        self.action_type = action_type
+        self.frecuencia = frecuencia
+        self.last_done = last_done
+        self.next_due = next_due
 
-        st.markdown("### Calibraciones")
-        if self.calibracion is not None:
-            st.dataframe(self.calibracion, use_container_width=True)
-        else:
-            st.info("Sin datos de calibración.")
+    def dias_para_proximo(self):
+        """Calcula días restantes a la próxima acción"""
+        from datetime import datetime
+        if not self.next_due:
+            return None
+        try:
+            fecha = datetime.strptime(str(self.next_due), "%Y-%m-%d")
+            return (fecha - datetime.today()).days
+        except Exception:
+            return None    
 
-        st.markdown("### Estudios MSA")
-        if self.msa is not None:
-            st.dataframe(self.msa, use_container_width=True)
-        else:
-            st.info("Sin datos de MSA.")
+def row_to_dict(rows, description):
+    if not rows:
+        return None
+    cols = [desc[0] for desc in description]
+    return dict(zip(cols, rows[0]))
 
 
 def ExecuteQry(param):
     try:
         # --- Consulta principal ---
-        rows, description = get_qry(consulta, [param])
-        df_general = None
-        if rows:
-            df_general = pd.DataFrame.from_records(rows, columns=[desc[0] for desc in description])
+        row = row_to_dict(*get_qry(consulta, [param]))
+        if not row:
+            return None
 
         # --- Consulta de Calibración ---
         rows, description = get_qry(consultaCalibra, [param])
-        df_calibra = None
+        cal_obj = None
         if rows:
-            df_calibra = pd.DataFrame.from_records(rows, columns=[desc[0] for desc in description])
+            cols = [desc[0] for desc in description]
+            cal_row = dict(zip(cols, rows[0]))
+            cal_obj = Calibration(
+                action_type=cal_row.get("ActionType"),
+                gage_sn=cal_row.get("Gage_SN"),
+                recurrence=cal_row.get("OPCION"),
+                frecuencia=cal_row.get("FRECUENCIA"),
+                last_done=cal_row.get("LastDone"),
+                next_due=cal_row.get("NextDue"),
+            )            
 
         # --- Consulta de MSA ---
         rows, description = get_qry(consultaMsa, [param])
-        df_msa = None
+        msa_obj = None
         if rows:
-            df_msa = pd.DataFrame.from_records(rows, columns=[desc[0] for desc in description])
+            cols = [desc[0] for desc in description]
+            msa_row = dict(zip(cols, rows[0]))
+            msa_obj = Msa(
+                action_type=msa_row.get("ActionType"),
+                gage_sn=msa_row.get("Gage_SN"),
+                recurrence=msa_row.get("OPCION"),
+                frecuencia=msa_row.get("FRECUENCIA"),
+                last_done=msa_row.get("LastDone"),
+                next_due=msa_row.get("NextDue"),
+            )
 
-        # --- Crear y devolver el objeto Gage ---
+        # --- Crear objeto principal Gage ---
         gage = Gage(
-            general=df_general,
-            calibracion=df_calibra,
-            msa=df_msa
-        )
+            estatus=row.get("StatusName"),
+            area=row.get("Area"),
+            linea=row.get("Linea"),
+            operacion=row.get("Gage_SN"),
+            descripcion=row.get("Descripcion"),
+            nota=row.get("Notas"),
+            calibration=cal_obj,
+            msa=msa_obj,
+        )         
+
         return gage
 
     except Exception as e:
