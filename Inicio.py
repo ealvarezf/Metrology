@@ -4,7 +4,7 @@ import os
 from pyzbar.pyzbar import decode
 from PIL import Image
 from db import get_qry
-from gage import ExecuteQry, Gage 
+from gage import ExecuteQry, Gage
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(
@@ -111,14 +111,19 @@ st.markdown("""
 # FUNCIÓN PARA RENDERIZAR TARJETA
 # =====================================================
 
-def render_gage_card(g: Gage):
+def render_gage_card(g: Gage, p):
+        # Si p es un conjunto, extrae el primer elemento
+    if isinstance(p, set):
+        p = next(iter(p))
+
     dias_cal = g.calibration.dias_para_proximo() if g.calibration else None
     dias_msa = g.msa.dias_para_proximo() if g.msa else None
-    estado_cal = "alerta" if dias_cal and dias_cal < 30 else "ok"
-    estado_msa = "alerta" if dias_msa and dias_msa < 30 else "ok"
+    estado_cal = "alerta" if dias_cal and dias_cal < 1 else "ok"
+    estado_msa = "alerta" if dias_msa and dias_msa < 1 else "ok"
 
     html = f"""
     <div class="card">
+        <h2>{p}</h2>
         <h3>{g.descripcion}</h3>
         <p><b>Estatus:</b> {g.estatus}</p>
         <p><b>Área:</b> {g.area}</p>
@@ -144,20 +149,38 @@ def render_gage_card(g: Gage):
 
 # Interfaz Streamlit
 param = None  # Inicializamos la variable para evitar el NameError
+# Inicializamos valores en session_state si no existen
+
+if "manual_param" not in st.session_state:
+    st.session_state.manual_param = ""
+if "img_file" not in st.session_state:
+    st.session_state.img_file = None
 
 col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
     # Capturar imagen desde la webcam
     img_file = st.camera_input("Escanear código QR")
 
+    # Detectar cuando se limpia la foto (img_file vuelve a None)
+    if img_file is None and st.session_state.img_file is not None:
+        # Se limpió la foto, también limpiamos el input manual
+        st.session_state.manual_param = ""
+
+    # Guardar el estado actual
+    st.session_state.img_file = img_file
+
+    # Alternativa manual
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.text_input(
+        "O ingresa el código manualmente:",
+        placeholder="Ejemplo: GAGE12345",
+        label_visibility="visible",
+        key="manual_param"  # <-- clave que mantiene sincronización
+    )
+
 if img_file is not None:
     # Abrir la imagen con PIL
     img = Image.open(img_file)
-    
-    # Mostrar la imagen capturada
-    #st.image(img, caption="Imagen capturada", use_container_width=True)
-    
-   # Decodificar QR
     decoded_objects = decode(img)
     
     if decoded_objects:
@@ -170,19 +193,30 @@ if img_file is not None:
         if len(lines) >= 1:
             param = lines[-1]
             st.success(f"Parámetro para la consulta: {param}")
-            gage = ExecuteQry(param)
-            if gage:
-                #gage.render()
-
-                # =====================================================
-                # MOSTRAR TARJETA
-                # =====================================================
-                render_gage_card(gage)
 
         else:
             st.warning("El QR no tiene suficientes líneas")
+            param = None
     else:
         st.error("No se detectó ningún QR")
+        param = None
+else:
+    param = None
+
+# Si el usuario escribió el código manualmente, usarlo
+if not param and st.session_state.manual_param:
+    param = st.session_state.manual_param.strip()
+
+    st.info(f"Usando el parámetro ingresado manualmente: {param}")
+
+# Ejecutar la consulta si tenemos un parámetro
+if param:
+    gage = ExecuteQry(param)
+    if gage:
+        render_gage_card(gage, {param})
+    else:
+        st.error("No se encontraron resultados para el parámetro ingresado.")    
+
 
 
 

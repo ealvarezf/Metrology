@@ -30,6 +30,19 @@ consultaMsa = """
                      WHERE Gage_ID = ?;
            """
 
+# Función auxiliar para formatear fechas
+def fmt_date(value):
+    if not value:
+        return ""
+    
+    if isinstance(value, str):
+        # Intentar convertir la cadena a datetime si viene como texto
+        try:
+            value = datetime.fromisoformat(value)
+        except ValueError:
+            return value  # Si no se puede convertir, devuelve el texto tal cual
+    return value.strftime("%Y/%m/%d")       
+
 # =====================================================
 # CLASES
 # =====================================================
@@ -39,14 +52,30 @@ class Calibration:
         self.gage_sn = gage_sn
         self.recurrence = recurrence
         self.frecuencia = frecuencia
-        self.last_done = last_done
-        self.next_due = next_due
+        self.last_done = fmt_date(last_done)
+        self.next_due = fmt_date(next_due)
 
     def dias_para_proximo(self):
         """Retorna los días restantes hasta la próxima calibración."""
         try:
-            fecha = datetime.strptime(self.next_due, "%d-%m-%Y")
-            return (fecha - datetime.now()).days
+            # Detectar si es datetime o string
+            if isinstance(self.next_due, datetime):
+                fecha = self.next_due
+            else:
+                # Intentar varios formatos comunes
+                for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d"):
+                    try:
+                        fecha = datetime.strptime(str(self.next_due), fmt)
+                        break
+                    except ValueError:
+                        fecha = None
+                if fecha is None:
+                    return None
+
+            # Calcular diferencia
+            dias = (fecha - datetime.now()).days
+            return dias
+
         except Exception:
             return None
 
@@ -56,14 +85,30 @@ class Msa:
         self.gage_sn = gage_sn
         self.recurrence = recurrence
         self.frecuencia = frecuencia
-        self.last_done = last_done
-        self.next_due = next_due
+        self.last_done = fmt_date(last_done)
+        self.next_due = fmt_date(next_due)
 
     def dias_para_proximo(self):
-        """Retorna los días restantes hasta el próximo estudio MSA."""
+        """Retorna los días restantes hasta la próxima calibración."""
         try:
-            fecha = datetime.strptime(self.next_due, "%d-%m-%Y")
-            return (fecha - datetime.now()).days
+            # Detectar si es datetime o string
+            if isinstance(self.next_due, datetime):
+                fecha = self.next_due
+            else:
+                # Intentar varios formatos comunes
+                for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d"):
+                    try:
+                        fecha = datetime.strptime(str(self.next_due), fmt)
+                        break
+                    except ValueError:
+                        fecha = None
+                if fecha is None:
+                    return None
+
+            # Calcular diferencia
+            dias = (fecha - datetime.now()).days
+            return dias
+
         except Exception:
             return None
 
