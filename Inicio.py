@@ -29,13 +29,24 @@ except Exception:
 st.markdown(
     """
     <div style='text-align: center; padding: 10px 0;'>
-        <h1 style='color: #003366; margin-bottom: 0;'>CONTROL DE EQUIPOS - METROLOGÍA</h1>
-        <h3 style='color: #666;'>Planta 66 - Nexteer Automotive</h3>
+        <h1 style='color: #003366; margin-bottom: 0;'>METROLOGÍA</h1>
+        <h3 style='color: #666;'>Nexteer Automotive</h3>
         <hr style='border: 2px solid #003366; width: 60%; margin: auto;'>
     </div>
     """,
     unsafe_allow_html=True
 )
+
+# --- LISTA INTERACTIVA ---
+opciones = ["Planta 66", "Planta 65", "Planta 63"]
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    seleccion = st.selectbox("Selecciona la planta:", opciones, index=0, key="planta_select")
+    
+seleccion = seleccion.replace("Planta ", "")
+if seleccion == "66": seleccion = ""
+db = seleccion
+#st.write(f"Has seleccionado: **{db}**")
 
 # --- CSS para centrar y hacer cuadrado el recuadro de cámara ---
 st.markdown("""
@@ -99,13 +110,16 @@ st.markdown("""
         transition: all 0.3s ease;
         box-shadow: 0 10px 20px rgba(0,0,0,0.15);
     }
-    h3 { color: #1e293b; }
-    h4 { color: #334155; margin-top: 20px; }
+    h3 { color: #475569; } 
+    h4 { color: #475569; margin-top: 20px; }
     p { color: #475569; margin: 4px 0; }
     .ok { color: #15803d; font-weight: 600; }
     .alerta { color: #e11d48; font-weight: 600; }
     </style>
 """, unsafe_allow_html=True)
+
+#    h3 { color: #1e293b; } 
+#    h4 { color: #334155; margin-top: 20px; }
 
 # =====================================================
 # FUNCIÓN PARA RENDERIZAR TARJETA
@@ -211,7 +225,7 @@ if not param and st.session_state.manual_param:
 
 # Ejecutar la consulta si tenemos un parámetro
 if param:
-    gage = ExecuteQry(param)
+    gage = ExecuteQry(db, param)
     if gage:
         render_gage_card(gage, {param})
     else:

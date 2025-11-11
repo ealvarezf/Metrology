@@ -5,7 +5,7 @@ import json
 import pyodbc
 from cryptography.fernet import Fernet
 
-def get_connection():
+def get_connection(db: str):
     try:
         # Leer el archivo JSON de configuración
         if not os.path.exists('config.json'):
@@ -18,7 +18,8 @@ def get_connection():
         f = Fernet(key)
 
         SERVER = config["SERVER"]
-        DATABASE = config["DATABASE"]
+        #DATABASE = config["DATABASE"]
+        DATABASE = f"{config['DATABASE']}{db}"
         USERNAME = config["USERNAME"]
         PASSWORD = f.decrypt(config["PASSWORD"].encode("utf-8")).decode("utf-8")
         DRIVER = "ODBC Driver 17 for SQL Server"
@@ -58,10 +59,10 @@ def get_connectionSQLite():
 
     return None  # En caso de error, retornar None
 
-def get_qry(qry: str, params: list = []):
+def get_qry(db: str, qry: str, params: list = []):
     try:     
 
-        conn = get_connection()
+        conn = get_connection(db)
         if conn is None:
             st.error("No se pudo establecer conexión con la base de datos.")
             return None, None

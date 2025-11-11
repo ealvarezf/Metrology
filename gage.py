@@ -151,15 +151,15 @@ def row_to_dict(rows, description):
     return dict(zip(cols, rows[0]))
 
 
-def ExecuteQry(param):
+def ExecuteQry(db: str, param):
     try:
         # --- Consulta principal ---
-        row = row_to_dict(*get_qry(consulta, [param]))
+        row = row_to_dict(*get_qry(db, consulta, [param]))
         if not row:
             return None
 
         # --- Consulta de Calibración ---
-        rows, description = get_qry(consultaCalibra, [param])
+        rows, description = get_qry(db, consultaCalibra, [param])
         cal_obj = None
         if rows:
             cols = [desc[0] for desc in description]
@@ -174,7 +174,7 @@ def ExecuteQry(param):
             )            
 
         # --- Consulta de MSA ---
-        rows, description = get_qry(consultaMsa, [param])
+        rows, description = get_qry(db, consultaMsa, [param])
         msa_obj = None
         if rows:
             cols = [desc[0] for desc in description]
