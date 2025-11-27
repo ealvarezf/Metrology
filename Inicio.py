@@ -5,6 +5,8 @@ from pyzbar.pyzbar import decode
 from PIL import Image
 from db import get_qry
 from gage import ExecuteQry, Gage
+import cv2
+import numpy as np
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(
@@ -195,6 +197,26 @@ with col2:
 if img_file is not None:
     # Abrir la imagen con PIL
     img = Image.open(img_file)
+
+    #Lineas para preprocesamiento de imagen
+    img1 = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+
+    # 1. Gris
+    gray = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+
+    # 2. Aumentar contraste con CLAHE
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+    enhanced = clahe.apply(gray)
+
+    # 3. Filtrar ruido sin perder bordes
+    filtered = cv2.bilateralFilter(enhanced, 9, 75, 75)
+
+    # 4. Binarización Otsu
+    _, thresh = cv2.threshold(filtered, 0, 255, cv2.THRESH_OTSU + cv2.THRESH_BINARY)
+
+    img = Image.fromarray(thresh)
+    # Fin de preprocesamiento
+
     decoded_objects = decode(img)
     
     if decoded_objects:
